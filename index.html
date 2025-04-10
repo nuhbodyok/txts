@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Manager</title>
+    <style>
+        :root {
+            --background: #121212;
+            --surface: #1e1e1e;
+            --surface-light: #2d2d2d;
+            --primary: #bb86fc;
+            --primary-hover: #c69cfd;
+            --text: #e1e1e1;
+            --text-secondary: #a0a0a0;
+            --red: #cf6679;
+            --green: #03dac6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--surface-light);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .github-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .github-link:hover {
+            color: var(--primary);
+        }
+
+        .create-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: var(--surface);
+            border-radius: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input, textarea, button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--surface-light);
+            background-color: var(--surface);
+            color: var(--text);
+            font-size: 16px;
+        }
+
+        input:focus, textarea:focus {
+            outline: 1px solid var(--primary);
+        }
+
+        input {
+            flex: 1;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.delete {
+            background-color: var(--red);
+            color: var(--text);
+        }
+
+        button.download {
+            background-color: var(--green);
+            color: #000;
+        }
+
+        .text-list {
+            background-color: var(--surface);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .text-list h2 {
+            padding: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid var(--surface-light);
+        }
+
+        .empty-list {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .text-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--surface-light);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .text-item:hover {
+            background-color: var(--surface-light);
+        }
+
+        .text-item:last-child {
+            border-bottom: none;
+        }
+
+        .text-item-title {
+            flex: 1;
+        }
+
+        .text-item-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background-color: var(--surface);
+            width: 90%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--surface-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .modal-title input {
+            flex: 1;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            padding: 15px;
+        }
+
+        .modal-body textarea {
+            width: 100%;
+            min-height: 300px;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+
+        .modal-footer {
+            padding: 10px 15px 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .alert {
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background-color: var(--red);
+            display: none;
+        }
+
+        .custom-confirm {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirm-dialog {
+            background-color: var(--surface);
+            width: 90%;
+            max-width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+        }
+
+        .confirm-message {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .no-content {
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        #storage-status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: var(--surface);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .modal-title {
+                flex-direction: column;
+            }
+            
+            .modal-footer {
+                flex-wrap: wrap;
+            }
+            
+            .modal-footer button {
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .github-link {
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Text Manager</h1>
+        <a href="https://github.com/yourusername/text-manager" target="_blank" class="github-link">View on GitHub</a>
+    </header>
+
+    <div class="create-section">
+        <div class="input-group">
+            <input type="text" id="new-text-title" placeholder="Enter title for new text...">
+            <button id="create-text-btn">Create New</button>
+        </div>
+        <div class="alert" id="create-alert"></div>
+    </div>
+
+    <div class="text-list">
+        <h2>Your Saved Texts</h2>
+        <div id="text-items-container">
+            <div class="empty-list" id="empty-list-message">No saved texts yet. Create one to get started!</div>
+        </div>
+    </div>
+
+    <div id="storage-status"></div>
+
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <input type="text" id="edit-title" placeholder="Text title">
+                    <button id="rename-btn">Rename</button>
+                </div>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert" id="edit-alert"></div>
+                <textarea id="edit-content" placeholder="Enter your text here..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="save-btn">Save</button>
+                <button id="download-btn" class="download">Download</button>
+                <button id="delete-btn" class="delete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="custom-confirm" id="confirm-dialog">
+        <div class="confirm-dialog">
+            <div class="confirm-message" id="confirm-message"></div>
+            <div class="confirm-buttons">
+                <button id="confirm-yes">Yes</button>
+                <button id="confirm-no">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const newTextTitleInput = document.getElementById('new-text-title');
+        const createTextBtn = document.getElementById('create-text-btn');
+        const textItemsContainer = document.getElementById('text-items-container');
+        const emptyListMessage = document.getElementById('empty-list-message');
+        const editModal = document.getElementById('edit-modal');
+        const editTitleInput = document.getElementById('edit-title');
+        const editContentTextarea = document.getElementById('edit-content');
+        const closeModalBtn = document.getElementById('close-modal');
+        const saveBtn = document.getElementById('save-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const renameBtn = document.getElementById('rename-btn');
+        const createAlert = document.getElementById('create-alert');
+        const editAlert = document.getElementById('edit-alert');
+        const confirmDialog = document.getElementById('confirm-dialog');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+        const storageStatus = document.getElementById('storage-status');
+
+        // Current text being edited
+        let currentTextId = null;
+        let originalTitle = null;
+        let confirmCallback = null;
+
+        // Custom confirm dialog
+        function showConfirm(message, callback) {
+            confirmMessage.textContent = message;
+            confirmCallback = callback;
+            confirmDialog.style.display = 'flex';
+        }
+
+        confirmYesBtn.addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback(true);
+            }
+            confirmDialog.style.display = 'none';
+        });
+
+        confirmNoBtn.addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback(false);
+            }
+            confirmDialog.style.display = 'none';
+        });
+
+        // Close confirm dialog when clicking outside
+        confirmDialog.addEventListener('click', (e) => {
+            if (e.target === confirmDialog) {
+                confirmNoBtn.click();
+            }
+        });
+
+        // Initialize the application
+        function init() {
+            checkStorageAvailability();
+            updateTextList();
+            setupEventListeners();
+        }
+
+        // Check if localStorage is available
+        function checkStorageAvailability() {
+            try {
+                const testKey = 'test-storage';
+                localStorage.setItem(testKey, '1');
+                localStorage.removeItem(testKey);
+                
+                // Calculate available storage
+                let totalUsed = 0;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    totalUsed += localStorage.getItem(key).length;
+                }
+                
+                const totalAvailable = 5 * 1024 * 1024; // Approx 5MB (typical localStorage limit)
+                const percentUsed = (totalUsed / totalAvailable * 100).toFixed(2);
+                
+                storageStatus.textContent = `Storage: ${formatBytes(totalUsed)} used (${percentUsed}% of ~5MB)`;
+            } catch (e) {
+                storageStatus.textContent = 'Warning: LocalStorage is not available. Your texts will not be saved between sessions.';
+                storageStatus.style.backgroundColor = 'var(--red)';
+                storageStatus.style.color = 'var(--text)';
+            }
+        }
+
+        // Format bytes to human-readable form
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + " bytes";
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+            else return (bytes / 1048576).toFixed(1) + " MB";
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            createTextBtn.addEventListener('click', createNewText);
+            closeModalBtn.addEventListener('click', closeModal);
+            saveBtn.addEventListener('click', saveText);
+            deleteBtn.addEventListener('click', confirmDeleteText);
+            downloadBtn.addEventListener('click', downloadText);
+            renameBtn.addEventListener('click', renameText);
+            
+            // Close modal when clicking outside
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    closeModal();
+                }
+            });
+
+            // Enter key for creating new text
+            newTextTitleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    createNewText();
+                }
+            });
+            
+            // Enter key for rename
+            editTitleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    renameText();
+                }
+            });
+        }
+
+        // Get all saved texts from localStorage
+        function getSavedTexts() {
+            try {
+                const texts = localStorage.getItem('text-manager-data');
+                return texts ? JSON.parse(texts) : {};
+            } catch (e) {
+                console.error('Error reading from localStorage:', e);
+                return {};
+            }
+        }
+
+        // Save texts to localStorage
+        function saveToStorage(texts) {
+            try {
+                localStorage.setItem('text-manager-data', JSON.stringify(texts));
+                checkStorageAvailability(); // Update storage stats
+                return true;
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+                showAlert(createAlert, 'Failed to save data: Storage might be full');
+                return false;
+            }
+        }
+
+        // Format a date in a readable way
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        // Update the list of texts displayed on the page
+        function updateTextList() {
+            const texts = getSavedTexts();
+            const textIds = Object.keys(texts);
+            
+            // Clear container except for the empty message
+            const items = textItemsContainer.querySelectorAll('.text-item');
+            items.forEach(item => item.remove());
+            
+            // Show or hide empty message
+            if (textIds.length === 0) {
+                emptyListMessage.style.display = 'block';
+            } else {
+                emptyListMessage.style.display = 'none';
+                
+                // Sort by updated time (newest first)
+                textIds.sort((a, b) => {
+                    return new Date(texts[b].updatedAt) - new Date(texts[a].updatedAt);
+                });
+                
+                // Add text items
+                textIds.forEach(id => {
+                    const textData = texts[id];
+                    const textItem = document.createElement('div');
+                    textItem.className = 'text-item';
+                    textItem.dataset.id = id;
+                    textItem.addEventListener('click', () => openEditModal(id));
+                    
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = 'text-item-title';
+                    titleSpan.textContent = textData.title;
+                    
+                    const dateSpan = document.createElement('span');
+                    dateSpan.className = 'text-item-date';
+                    dateSpan.textContent = 'Updated: ' + formatDate(textData.updatedAt);
+                    
+                    textItem.appendChild(titleSpan);
+                    textItem.appendChild(dateSpan);
+                    textItemsContainer.appendChild(textItem);
+                });
+            }
+        }
+
+        // Create a new text file
+        function createNewText() {
+            const title = newTextTitleInput.value.trim();
+            
+            if (!title) {
+                showAlert(createAlert, 'Please enter a title');
+                return;
+            }
+            
+            const texts = getSavedTexts();
+            
+            // Check for duplicate titles
+            for (const id in texts) {
+                if (texts[id].title.toLowerCase() === title.toLowerCase()) {
+                    showAlert(createAlert, 'A text with this title already exists');
+                    return;
+                }
+            }
+            
+            // Create new text with a unique ID
+            const id = Date.now().toString();
+            texts[id] = {
+                title: title,
+                content: '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            if (saveToStorage(texts)) {
+                updateTextList();
+                newTextTitleInput.value = '';
+                
+                // Open the edit modal for the new text
+                openEditModal(id);
+            }
+        }
+
+        // Open the edit modal for a specific text
+        function openEditModal(id) {
+            const texts = getSavedTexts();
+            const textData = texts[id];
+            
+            if (!textData) {
+                showAlert(createAlert, 'Text not found');
+                return;
+            }
+            
+            currentTextId = id;
+            originalTitle = textData.title;
+            
+            editTitleInput.value = textData.title;
+            editContentTextarea.value = textData.content;
+            
+            editModal.style.display = 'flex';
+            editAlert.style.display = 'none';
+            editContentTextarea.focus();
+        }
+
+        // Close the edit modal
+        function closeModal() {
+            editModal.style.display = 'none';
+            currentTextId = null;
+            originalTitle = null;
+            editAlert.style.display = 'none';
+        }
+
+        // Save the current text
+        function saveText() {
+            if (!currentTextId) return;
+            
+            const texts = getSavedTexts();
+            
+            if (texts[currentTextId]) {
+                const newContent = editContentTextarea.value;
+                
+                // Warn if the user is saving empty content
+                if (newContent.trim() === '') {
+                    showConfirm('You are saving an empty text. Continue?', (confirmed) => {
+                        if (confirmed) {
+                            saveTextContent(texts, newContent);
+                        }
+                    });
+                } else {
+                    saveTextContent(texts, newContent);
+                }
+            }
+        }
+        
+        // Helper function to save text content
+        function saveTextContent(texts, content) {
+            texts[currentTextId].content = content;
+            texts[currentTextId].updatedAt = new Date().toISOString();
+            
+            if (saveToStorage(texts)) {
+                updateTextList();
+                showAlert(editAlert, 'Text saved successfully!', 'success');
+                
+                setTimeout(() => {
+                    editAlert.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+        // Rename the current text
+        function renameText() {
+            if (!currentTextId) return;
+            
+            const newTitle = editTitleInput.value.trim();
+            
+            if (!newTitle) {
+                showAlert(editAlert, 'Title cannot be empty');
+                return;
+            }
+            
+            const texts = getSavedTexts();
+            
+            // Skip check if title hasn't changed
+            if (newTitle === originalTitle) {
+                showAlert(editAlert, 'Title unchanged', 'success');
+                setTimeout(() => {
+                    editAlert.style.display = 'none';
+                }, 2000);
+                return;
+            }
+            
+            // Check for duplicate titles
+            for (const id in texts) {
+                if (id !== currentTextId && texts[id].title.toLowerCase() === newTitle.toLowerCase()) {
+                    showAlert(editAlert, 'A text with this title already exists');
+                    return;
+                }
+            }
+            
+            if (texts[currentTextId]) {
+                texts[currentTextId].title = newTitle;
+                texts[currentTextId].updatedAt = new Date().toISOString();
+                
+                if (saveToStorage(texts)) {
+                    updateTextList();
+                    originalTitle = newTitle;
+                    
+                    showAlert(editAlert, 'Text renamed successfully!', 'success');
+                    
+                    setTimeout(() => {
+                        editAlert.style.display = 'none';
+                    }, 2000);
+                }
+            }
+        }
+
+        // Confirm before deleting text
+        function confirmDeleteText() {
+            if (!currentTextId) return;
+            
+            showConfirm('Are you sure you want to delete this text?', (confirmed) => {
+                if (confirmed) {
+                    deleteText();
+                }
+            });
+        }
+
+        // Delete the current text
+        function deleteText() {
+            if (!currentTextId) return;
+            
+            const texts = getSavedTexts();
+            
+            if (texts[currentTextId]) {
+                delete texts[currentTextId];
+                saveToStorage(texts);
+                updateTextList();
+                closeModal();
+            }
+        }
+
+        // Download the current text as a .txt file
+        function downloadText() {
+            if (!currentTextId) return;
+            
+            const texts = getSavedTexts();
+            const textData = texts[currentTextId];
+            
+            if (!textData) return;
+            
+            const filename = `${textData.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
+            const content = textData.content;
+            
+            try {
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const element = document.createElement('a');
+                element.setAttribute('href', url);
+                element.setAttribute('download', filename);
+                element.style.display = 'none';
+                
+                document.body.appendChild(element);
+                element.click();
+                
+                // Cleanup
+                setTimeout(() => {
+                    document.body.removeChild(element);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            } catch (e) {
+                console.error('Download failed', e);
+                showAlert(editAlert, 'Download failed: ' + e.message);
+            }
+        }
+
+        // Show an alert message
+        function showAlert(alertElement, message, type = 'error') {
+            alertElement.textContent = message;
+            alertElement.style.display = 'block';
+            
+            if (type === 'success') {
+                alertElement.style.backgroundColor = 'var(--green)';
+            } else {
+                alertElement.style.backgroundColor = 'var(--red)';
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
