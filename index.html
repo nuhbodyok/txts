@@ -15,6 +15,7 @@
             --text-secondary: #a0a0a0;
             --red: #cf6679;
             --green: #03dac6;
+            --yellow: #ffb74d;
         }
 
         * {
@@ -131,11 +132,48 @@
         .text-item {
             padding: 12px 15px;
             border-bottom: 1px solid var(--surface-light);
-            cursor: pointer;
             transition: background-color 0.2s;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
+        }
+        
+        .text-item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
+            cursor: pointer;
+        }
+        
+        .text-item.locked::after {
+            content: "🔒";
+            position: absolute;
+            right: 52px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+        
+        .text-item-delete {
+            background-color: var(--red);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 10px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        
+        .text-item-delete:hover {
+            background-color: #e55;
         }
 
         .text-item:hover {
@@ -153,6 +191,7 @@
         .text-item-date {
             font-size: 12px;
             color: var(--text-secondary);
+            margin-right: 25px;
         }
 
         .modal-overlay {
@@ -341,6 +380,7 @@
                 <textarea id="edit-content" placeholder="Enter your text here..."></textarea>
             </div>
             <div class="modal-footer">
+                <button id="password-btn">Set Password</button>
                 <button id="save-btn">Save</button>
                 <button id="download-btn" class="download">Download</button>
                 <button id="delete-btn" class="delete">Delete</button>
@@ -354,6 +394,38 @@
             <div class="confirm-buttons">
                 <button id="confirm-yes">Yes</button>
                 <button id="confirm-no">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="password-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span id="password-modal-title">Set Password</span>
+                </div>
+                <button class="modal-close" id="close-password-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert" id="password-alert"></div>
+                <div id="password-set-container">
+                    <div class="input-group" style="margin-bottom: 10px;">
+                        <input type="password" id="password-input" placeholder="Enter password">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="confirm-password-input" placeholder="Confirm password">
+                    </div>
+                </div>
+                <div id="password-unlock-container" style="display: none;">
+                    <div class="input-group">
+                        <input type="password" id="unlock-password-input" placeholder="Enter password to unlock">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="set-password-btn">Set Password</button>
+                <button id="remove-password-btn" style="display: none;">Remove Password</button>
+                <button id="unlock-btn" style="display: none;">Unlock</button>
             </div>
         </div>
     </div>
@@ -372,6 +444,7 @@
         const deleteBtn = document.getElementById('delete-btn');
         const downloadBtn = document.getElementById('download-btn');
         const renameBtn = document.getElementById('rename-btn');
+        const passwordBtn = document.getElementById('password-btn');
         const createAlert = document.getElementById('create-alert');
         const editAlert = document.getElementById('edit-alert');
         const confirmDialog = document.getElementById('confirm-dialog');
@@ -379,6 +452,20 @@
         const confirmYesBtn = document.getElementById('confirm-yes');
         const confirmNoBtn = document.getElementById('confirm-no');
         const storageStatus = document.getElementById('storage-status');
+        
+        // Password modal elements
+        const passwordModal = document.getElementById('password-modal');
+        const passwordModalTitle = document.getElementById('password-modal-title');
+        const passwordInput = document.getElementById('password-input');
+        const confirmPasswordInput = document.getElementById('confirm-password-input');
+        const unlockPasswordInput = document.getElementById('unlock-password-input');
+        const passwordAlert = document.getElementById('password-alert');
+        const passwordSetContainer = document.getElementById('password-set-container');
+        const passwordUnlockContainer = document.getElementById('password-unlock-container');
+        const setPasswordBtn = document.getElementById('set-password-btn');
+        const removePasswordBtn = document.getElementById('remove-password-btn');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const closePasswordModal = document.getElementById('close-password-modal');
 
         // Current text being edited
         let currentTextId = null;
@@ -460,11 +547,24 @@
             deleteBtn.addEventListener('click', confirmDeleteText);
             downloadBtn.addEventListener('click', downloadText);
             renameBtn.addEventListener('click', renameText);
+            passwordBtn.addEventListener('click', showPasswordModal);
             
-            // Close modal when clicking outside
+            // Password modal events
+            closePasswordModal.addEventListener('click', closePasswordDialog);
+            setPasswordBtn.addEventListener('click', setPassword);
+            removePasswordBtn.addEventListener('click', removePassword);
+            unlockBtn.addEventListener('click', unlockText);
+            
+            // Close modals when clicking outside
             editModal.addEventListener('click', (e) => {
                 if (e.target === editModal) {
                     closeModal();
+                }
+            });
+            
+            passwordModal.addEventListener('click', (e) => {
+                if (e.target === passwordModal) {
+                    closePasswordDialog();
                 }
             });
 
@@ -479,6 +579,25 @@
             editTitleInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     renameText();
+                }
+            });
+            
+            // Enter key for password fields
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmPasswordInput.focus();
+                }
+            });
+            
+            confirmPasswordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    setPassword();
+                }
+            });
+            
+            unlockPasswordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    unlockText();
                 }
             });
         }
@@ -513,6 +632,261 @@
             return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
         }
 
+        // Simple encryption/decryption functions
+        function encryptText(text, password) {
+            try {
+                // This is a simple XOR encryption, not highly secure but sufficient for basic privacy
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ password.charCodeAt(i % password.length));
+                }
+                return btoa(result); // Base64 encode for safe storage
+            } catch (e) {
+                console.error('Encryption error:', e);
+                return text; // Return original text if encryption fails
+            }
+        }
+        
+        function decryptText(encryptedText, password) {
+            try {
+                // Decrypt the base64 encoded XOR encrypted text
+                const text = atob(encryptedText);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ password.charCodeAt(i % password.length));
+                }
+                return result;
+            } catch (e) {
+                console.error('Decryption error:', e);
+                return encryptedText; // Return encrypted text if decryption fails
+            }
+        }
+        
+        // Generate a hash of the password for verification
+        function hashPassword(password) {
+            // Simple hash function for password verification
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                const char = password.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash.toString(16); // Convert to hex string
+        }
+        
+        // Show the password modal
+        function showPasswordModal() {
+            if (!currentTextId) return;
+            
+            const texts = getSavedTexts();
+            if (!texts[currentTextId]) return;
+            
+            const hasPassword = texts[currentTextId].passwordHash !== undefined;
+            
+            // Configure modal for setting or removing password
+            if (hasPassword) {
+                passwordModalTitle.textContent = 'Password Options';
+                setPasswordBtn.style.display = 'none';
+                removePasswordBtn.style.display = 'block';
+                passwordSetContainer.style.display = 'block';
+                passwordUnlockContainer.style.display = 'none';
+                unlockBtn.style.display = 'none';
+            } else {
+                passwordModalTitle.textContent = 'Set Password';
+                setPasswordBtn.style.display = 'block';
+                removePasswordBtn.style.display = 'none';
+                passwordSetContainer.style.display = 'block';
+                passwordUnlockContainer.style.display = 'none';
+                unlockBtn.style.display = 'none';
+            }
+            
+            // Clear previous inputs and alerts
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+            unlockPasswordInput.value = '';
+            passwordAlert.style.display = 'none';
+            
+            // Show modal
+            passwordModal.style.display = 'flex';
+            setTimeout(() => passwordInput.focus(), 100);
+        }
+        
+        // Close the password dialog
+        function closePasswordDialog() {
+            passwordModal.style.display = 'none';
+            passwordAlert.style.display = 'none';
+        }
+        
+        // Set a password for the current text
+        function setPassword() {
+            if (!currentTextId) return;
+            
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (!password) {
+                showAlert(passwordAlert, 'Please enter a password');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showAlert(passwordAlert, 'Passwords do not match');
+                return;
+            }
+            
+            const texts = getSavedTexts();
+            if (!texts[currentTextId]) return;
+            
+            // Generate password hash for verification
+            const passwordHash = hashPassword(password);
+            
+            // Encrypt the content
+            const encryptedContent = encryptText(texts[currentTextId].content, password);
+            
+            // Update the text data
+            texts[currentTextId].content = encryptedContent;
+            texts[currentTextId].passwordHash = passwordHash;
+            texts[currentTextId].isEncrypted = true;
+            texts[currentTextId].updatedAt = new Date().toISOString();
+            
+            if (saveToStorage(texts)) {
+                showAlert(passwordAlert, 'Password set successfully!', 'success');
+                updateTextList();
+                
+                setTimeout(() => {
+                    closePasswordDialog();
+                    // Close the edit modal as well since the content is now encrypted
+                    closeModal();
+                }, 1500);
+            }
+        }
+        
+        // Remove password from the current text
+        function removePassword() {
+            if (!currentTextId) return;
+            
+            const password = passwordInput.value;
+            
+            if (!password) {
+                showAlert(passwordAlert, 'Please enter the current password');
+                return;
+            }
+            
+            const texts = getSavedTexts();
+            if (!texts[currentTextId]) return;
+            
+            // Verify password
+            const passwordHash = hashPassword(password);
+            if (passwordHash !== texts[currentTextId].passwordHash) {
+                showAlert(passwordAlert, 'Incorrect password');
+                return;
+            }
+            
+            // Decrypt the content
+            const decryptedContent = decryptText(texts[currentTextId].content, password);
+            
+            // Update the text data
+            texts[currentTextId].content = decryptedContent;
+            delete texts[currentTextId].passwordHash;
+            delete texts[currentTextId].isEncrypted;
+            texts[currentTextId].updatedAt = new Date().toISOString();
+            
+            if (saveToStorage(texts)) {
+                showAlert(passwordAlert, 'Password removed successfully!', 'success');
+                updateTextList();
+                
+                setTimeout(() => {
+                    closePasswordDialog();
+                    // Update the textarea with decrypted content
+                    editContentTextarea.value = decryptedContent;
+                }, 1500);
+            }
+        }
+        
+        // Show password verification dialog
+        function showPasswordVerification(id, callback) {
+            currentTextId = id;
+            
+            // Configure modal for password verification
+            passwordModalTitle.textContent = 'Enter Password';
+            setPasswordBtn.style.display = 'none';
+            removePasswordBtn.style.display = 'none';
+            passwordSetContainer.style.display = 'none';
+            passwordUnlockContainer.style.display = 'block';
+            unlockBtn.style.display = 'block';
+            
+            // Clear previous inputs and alerts
+            unlockPasswordInput.value = '';
+            passwordAlert.style.display = 'none';
+            
+            // Store callback
+            unlockCallback = callback;
+            
+            // Show modal
+            passwordModal.style.display = 'flex';
+            setTimeout(() => unlockPasswordInput.focus(), 100);
+        }
+        
+        // Verify password and unlock text
+        function unlockText() {
+            if (!currentTextId) return;
+            
+            const password = unlockPasswordInput.value;
+            
+            if (!password) {
+                showAlert(passwordAlert, 'Please enter the password');
+                return;
+            }
+            
+            const texts = getSavedTexts();
+            if (!texts[currentTextId]) return;
+            
+            // Verify password
+            const passwordHash = hashPassword(password);
+            if (passwordHash !== texts[currentTextId].passwordHash) {
+                showAlert(passwordAlert, 'Incorrect password');
+                return;
+            }
+            
+            // Decrypt the content
+            const decryptedContent = decryptText(texts[currentTextId].content, password);
+            
+            // Store the password temporarily for this session
+            sessionPasswords[currentTextId] = password;
+            
+            closePasswordDialog();
+            
+            // Call the callback function with the decrypted content
+            if (unlockCallback) {
+                unlockCallback(decryptedContent);
+                unlockCallback = null;
+            }
+        }
+        
+        // Store passwords in session to avoid asking repeatedly
+        const sessionPasswords = {};
+        let unlockCallback = null;
+        
+        // Delete a text file by its ID
+        function deleteTextById(id) {
+            const texts = getSavedTexts();
+            
+            if (texts[id]) {
+                showConfirm(`Are you sure you want to delete "${texts[id].title}"?`, (confirmed) => {
+                    if (confirmed) {
+                        delete texts[id];
+                        saveToStorage(texts);
+                        updateTextList();
+                        
+                        // If the text is currently open in the editor, close it
+                        if (currentTextId === id) {
+                            closeModal();
+                        }
+                    }
+                });
+            }
+        }
+        
         // Update the list of texts displayed on the page
         function updateTextList() {
             const texts = getSavedTexts();
@@ -538,8 +912,18 @@
                     const textData = texts[id];
                     const textItem = document.createElement('div');
                     textItem.className = 'text-item';
+                    
+                    // Add locked class if the text is password protected
+                    if (textData.passwordHash) {
+                        textItem.classList.add('locked');
+                    }
+                    
                     textItem.dataset.id = id;
-                    textItem.addEventListener('click', () => openEditModal(id));
+                    
+                    // Create the clickable content area
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'text-item-content';
+                    contentDiv.addEventListener('click', () => handleTextItemClick(id));
                     
                     const titleSpan = document.createElement('span');
                     titleSpan.className = 'text-item-title';
@@ -549,11 +933,82 @@
                     dateSpan.className = 'text-item-date';
                     dateSpan.textContent = 'Updated: ' + formatDate(textData.updatedAt);
                     
-                    textItem.appendChild(titleSpan);
-                    textItem.appendChild(dateSpan);
+                    contentDiv.appendChild(titleSpan);
+                    contentDiv.appendChild(dateSpan);
+                    
+                    // Create delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'text-item-delete';
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.title = 'Delete this text';
+                    deleteBtn.addEventListener('click', (e) => {
+                        // Prevent the click from also triggering the text item
+                        e.stopPropagation();
+                        deleteTextById(id);
+                    });
+                    
+                    textItem.appendChild(contentDiv);
+                    textItem.appendChild(deleteBtn);
                     textItemsContainer.appendChild(textItem);
                 });
             }
+        }
+        
+        // Handle click on a text item
+        function handleTextItemClick(id) {
+            const texts = getSavedTexts();
+            const textData = texts[id];
+            
+            if (!textData) {
+                showAlert(createAlert, 'Text not found');
+                return;
+            }
+            
+            // Check if the text is password protected
+            if (textData.passwordHash && !sessionPasswords[id]) {
+                // Show password verification dialog
+                showPasswordVerification(id, (decryptedContent) => {
+                    // Open the edit modal with decrypted content
+                    currentTextId = id;
+                    originalTitle = textData.title;
+                    
+                    editTitleInput.value = textData.title;
+                    editContentTextarea.value = decryptedContent;
+                    
+                    editModal.style.display = 'flex';
+                    editAlert.style.display = 'none';
+                    editContentTextarea.focus();
+                });
+            } else {
+                // Open directly if not password protected or already unlocked in this session
+                let content = textData.content;
+                
+                // Decrypt if needed and we have the password in session
+                if (textData.isEncrypted && sessionPasswords[id]) {
+                    content = decryptText(content, sessionPasswords[id]);
+                }
+                
+                openEditModalDirect(id, content);
+            }
+        }
+        
+        // Open edit modal directly with provided content
+        function openEditModalDirect(id, content) {
+            const texts = getSavedTexts();
+            const textData = texts[id];
+            
+            currentTextId = id;
+            originalTitle = textData.title;
+            
+            editTitleInput.value = textData.title;
+            editContentTextarea.value = content;
+            
+            // Update password button text based on whether text has password
+            passwordBtn.textContent = textData.passwordHash ? 'Password Options' : 'Set Password';
+            
+            editModal.style.display = 'flex';
+            editAlert.style.display = 'none';
+            editContentTextarea.focus();
         }
 
         // Create a new text file
@@ -646,6 +1101,19 @@
         
         // Helper function to save text content
         function saveTextContent(texts, content) {
+            // If the text is password protected, encrypt the content before saving
+            if (texts[currentTextId].passwordHash && texts[currentTextId].isEncrypted) {
+                // Use the password from the current session
+                const password = sessionPasswords[currentTextId];
+                if (password) {
+                    content = encryptText(content, password);
+                } else {
+                    // We shouldn't be here if the text is encrypted and we don't have the password
+                    showAlert(editAlert, 'Error: Password required to save encrypted text');
+                    return;
+                }
+            }
+            
             texts[currentTextId].content = content;
             texts[currentTextId].updatedAt = new Date().toISOString();
             
@@ -741,7 +1209,9 @@
             if (!textData) return;
             
             const filename = `${textData.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
-            const content = textData.content;
+            
+            // Use the content in the textarea which is already decrypted if the text was encrypted
+            const content = editContentTextarea.value;
             
             try {
                 const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
