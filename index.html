@@ -1022,36 +1022,50 @@
         let currentMatchIndex = -1;
         let isPreviewActive = false;
         
-        // Initialize theme based on user preference
+        // Initialize theme based on saved preference, then system preference
         function initTheme() {
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            const savedTheme = localStorage.getItem('text-manager-theme');
+            let useDark;
+
+            if (savedTheme) {
+                useDark = savedTheme === 'dark';
+            } else {
+                useDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+
+            if (useDark) {
                 document.documentElement.classList.remove('light');
                 themeToggleBtn.textContent = '🌙';
             } else {
                 document.documentElement.classList.add('light');
                 themeToggleBtn.textContent = '☀️';
             }
-            
-            // Listen for changes in system preference
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-                if (event.matches) {
-                    document.documentElement.classList.remove('light');
-                    themeToggleBtn.textContent = '🌙';
-                } else {
-                    document.documentElement.classList.add('light');
-                    themeToggleBtn.textContent = '☀️';
-                }
-            });
+
+            // Listen for changes in system preference (only when no saved preference)
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                    if (localStorage.getItem('text-manager-theme')) return;
+                    if (event.matches) {
+                        document.documentElement.classList.remove('light');
+                        themeToggleBtn.textContent = '🌙';
+                    } else {
+                        document.documentElement.classList.add('light');
+                        themeToggleBtn.textContent = '☀️';
+                    }
+                });
+            }
         }
 
-        // Toggle theme manually
+        // Toggle theme manually and persist preference
         function toggleTheme() {
             if (document.documentElement.classList.contains('light')) {
                 document.documentElement.classList.remove('light');
                 themeToggleBtn.textContent = '🌙';
+                localStorage.setItem('text-manager-theme', 'dark');
             } else {
                 document.documentElement.classList.add('light');
                 themeToggleBtn.textContent = '☀️';
+                localStorage.setItem('text-manager-theme', 'light');
             }
         }
 
@@ -1076,18 +1090,7 @@
                 const testKey = 'test-storage';
                 localStorage.setItem(testKey, '1');
                 localStorage.removeItem(testKey);
-                
-                // Calculate available storage
-                let totalUsed = 0;
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    totalUsed += localStorage.getItem(key).length;
-                }
-                
-                const totalAvailable = 5 * 1024 * 1024; // Approx 5MB (typical localStorage limit)
-                const percentUsed = (totalUsed / totalAvailable * 100).toFixed(2);
-                
-                storageStatus.textContent = `Storage: ${formatBytes(totalUsed)} used (${percentUsed}% of ~5MB)`;
+                updateStorageStatus();
             } catch (e) {
                 storageStatus.textContent = 'Warning: LocalStorage is not available. Your texts will not be saved between sessions.';
                 storageStatus.style.backgroundColor = 'var(--red)';
@@ -1181,30 +1184,35 @@
                     confirmCloseModal();
                 }
             });
+            
+            // Sync scroll between textarea and line numbers
+            editContentTextarea.addEventListener('scroll', () => {
+                lineNumbersContainer.scrollTop = editContentTextarea.scrollTop;
+            });
 
             // Enter key for creating new text
-            newTextTitleInput.addEventListener('keypress', (e) => {
+            newTextTitleInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     createNewText();
                 }
             });
             
             // Enter key for rename
-            editTitleInput.addEventListener('keypress', (e) => {
+            editTitleInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     renameText();
                 }
             });
             
             // Enter key for search
-            searchInput.addEventListener('keypress', (e) => {
+            searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     performSearch();
                 }
             });
             
             // Enter key for find
-            findInput.addEventListener('keypress', (e) => {
+            findInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     if (e.shiftKey) {
                         findPrevious();
@@ -1408,7 +1416,7 @@
                     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
                     // Lists
                     .replace(/^\- (.*$)/gm, '<ul><li>$1</li></ul>')
-                    .replace(/^\d\. (.*$)/gm, '<ol><li>$1</li></ol>')
+                    .replace(/^\d+\. (.*$)/gm, '<ol><li>$1</li></ol>')
                     // Blockquotes
                     .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
                     // Paragraphs
@@ -1624,11 +1632,6 @@
             lineNumbersContainer.scrollTop = editContentTextarea.scrollTop;
         }
         
-        // Sync scroll between textarea and line numbers
-        editContentTextarea.addEventListener('scroll', () => {
-            lineNumbersContainer.scrollTop = editContentTextarea.scrollTop;
-        });
-        
         // Copy to clipboard
         function copyToClipboard() {
             const content = editContentTextarea.value;
@@ -1717,6 +1720,7 @@
                 if (newContent !== lastSavedContent) {
                     texts[currentTextId].content = newContent;
                     texts[currentTextId].updatedAt = new Date().toISOString();
+                    texts[currentTextId].syntaxMode = syntaxModeSelect.value;
                     
                     if (saveToStorage(texts)) {
                         updateTextList();
@@ -1868,12 +1872,29 @@
         function saveToStorage(texts) {
             try {
                 localStorage.setItem('text-manager-data', JSON.stringify(texts));
-                checkStorageAvailability(); // Update storage stats
+                updateStorageStatus();
                 return true;
             } catch (e) {
                 console.error('Error saving to localStorage:', e);
                 showAlert(createAlert, 'Failed to save data: Storage might be full');
                 return false;
+            }
+        }
+
+        // Update storage status display
+        function updateStorageStatus() {
+            try {
+                let totalUsed = 0;
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const val = localStorage.getItem(key);
+                    if (val) totalUsed += val.length;
+                }
+                const totalAvailable = 5 * 1024 * 1024;
+                const percentUsed = (totalUsed / totalAvailable * 100).toFixed(2);
+                storageStatus.textContent = `Storage: ${formatBytes(totalUsed)} used (${percentUsed}% of ~5MB)`;
+            } catch (e) {
+                // Silently ignore errors during status update
             }
         }
 
@@ -1974,6 +1995,7 @@
             
             if (!title) {
                 showAlert(createAlert, 'Please enter a title');
+                setTimeout(() => { createAlert.style.display = 'none'; }, 3000);
                 return;
             }
             
@@ -1983,6 +2005,7 @@
             for (const id in texts) {
                 if (texts[id].title.toLowerCase() === title.toLowerCase()) {
                     showAlert(createAlert, 'A text with this title already exists');
+                    setTimeout(() => { createAlert.style.display = 'none'; }, 3000);
                     return;
                 }
             }
@@ -2307,8 +2330,8 @@
                     removeButton.style.marginTop = '10px';
                     removeButton.style.marginBottom = '10px';
                     removeButton.addEventListener('click', () => {
-                        parentElement.removeChild(textArea);
-                        parentElement.removeChild(removeButton);
+                        if (textArea.parentElement) parentElement.removeChild(textArea);
+                        if (removeButton.parentElement) parentElement.removeChild(removeButton);
                         editAlert.style.display = 'none';
                     });
                     
