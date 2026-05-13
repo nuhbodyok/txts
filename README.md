@@ -31,7 +31,7 @@ A clean, fully client-side text editor and organizer that runs entirely in the b
 1. Fork or clone this repository
 2. Go to **Settings → Pages**
 3. Set source to your `main` branch, root folder
-4. Visit `[https://yourusername.github.io/your-repo-name/Texts_Manager.html](https://nuhbodyok.github.io/txts/)`
+4. Visit `[[https://nuhbodyok.github.io/txts/](https://nuhbodyok.github.io/txts/)]`
 
 ### Local
 
